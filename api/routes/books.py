@@ -68,6 +68,6 @@ async def get_book(book_id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
     return book
 
-@app.get("/test-deployment")
+@router.get("/test-deployment")
 async def test_deployment():
     return {"message": "Deployment test successful", "timestamp": datetime.now().isoformat()}
