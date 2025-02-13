@@ -67,3 +67,7 @@ async def get_book(book_id: int):
     if not book:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
     return book
+
+@app.get("/test-deployment")
+async def test_deployment():
+    return {"message": "Deployment test successful", "timestamp": datetime.now().isoformat()}
