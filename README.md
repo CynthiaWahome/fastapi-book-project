@@ -14,82 +14,150 @@ The **FastAPI Book Management API** is a RESTful web service for managing a book
 - 🔒 **CORS Middleware** – Secure cross-origin requests handling
 - 🚀 **Optimized Performance** – Uvicorn ASGI server integration
 
-## Project Structure
-
-```
-fastapi-book-project/
-├── api/
-│   ├── db/
-│   │   ├── __init__.py
-│   │   └── schemas.py      # Pydantic models and database schema
-│   ├── routes/
-│   │   ├── __init__.py
-│   │   └── books.py        # API route handlers for books
-│   └── router.py           # Centralized API router
-├── core/
-│   ├── __init__.py
-│   └── config.py           # Configuration settings
-├── tests/
-│   ├── __init__.py
-│   └── test_books.py       # Unit tests for book endpoints
-├── main.py                 # Application entry point
-├── requirements.txt        # Project dependencies
-└── README.md               # Project documentation
-```
-
 ## Technologies Used
 
-- **Programming Language:** Python 3.12
-- **Framework:** FastAPI
-- **Validation:** Pydantic
-- **Testing:** pytest
-- **Web Server:** Uvicorn
-- **Reverse Proxy:** Nginx (for deployment)
+- **Backend:** Python 3.12, FastAPI
+- **Containerization:** Docker & Docker Compose
+- **Reverse Proxy:** Nginx
+- **Cloud Platform:** AWS EC2
+- **Documentation:** Swagger UI, ReDoc
 
 ## Prerequisites
 
-Ensure you have the following installed before running the application:
-
-- Python 3.12+
+On your EC2 instance:
+- Docker
+- Docker Compose
 - Git
-- Virtual environment (`venv`)
 
-## Installation & Setup
+## EC2 Setup and Docker Deployment
 
-### 1. Clone the Repository
+### 1. EC2 Instance Setup
 
 ```bash
+# Connect to your EC2 instance
+ssh -i your-key.pem ec2-user@your-ec2-ip
+
+# Install Docker and Docker Compose
+sudo yum update -y
+sudo yum install -y docker
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker ec2-user
+
+# Install Docker Compose
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+```
+
+### 2. Deploy Application
+
+```bash
+# Clone repository on EC2
 git clone https://github.com/CynthiaWahome/fastapi-book-project.git
 cd fastapi-book-project
+
+# Start Docker containers
+docker-compose up -d
+
+# Verify deployment
+docker ps
 ```
 
-### 2. Create and Activate a Virtual Environment
+## Docker Configuration on EC2
+
+
+## ⚠️ Port Binding Issues on EC2
+
+When deploying on EC2, you might encounter port binding errors. Here's how to resolve them:
+
+1. **Check EC2 Security Group**
+   - Ensure port 80 is open in your EC2 security group
+   - Allow inbound HTTP traffic
+
+2. **Port 80 Already in Use on EC2**
+```bash
+# Check what's using port 80
+sudo netstat -tulpn | grep :80
+
+# Stop system-level Nginx if running
+sudo systemctl stop nginx
+sudo systemctl disable nginx
+```
+
+3. **Clean Docker Environment on EC2**
+```bash
+# Stop all containers
+docker-compose down
+
+# Prune containers, networks, and volumes
+docker system prune -f
+
+# Start fresh
+docker-compose up -d
+```
+
+## Accessing the API
+
+Once deployed on EC2:
+- API Endpoints: `http://your-ec2-ip/api/v1/`
+- Swagger UI: `http://your-ec2-ip/docs`
+- ReDoc: `http://your-ec2-ip/redoc`
+
+## Troubleshooting on EC2
+
+1. **Check Container Logs**
+```bash
+# View logs
+docker-compose logs -f
+
+# Check specific container
+docker logs fastapi-app
+docker logs nginx
+```
+
+2. **Verify Network Configuration**
+```bash
+# Check EC2 network interfaces
+ip addr show
+
+# Check Docker networks
+docker network ls
+docker network inspect app-network
+```
+
+3. **Test API Access**
+```bash
+# Test from EC2 instance
+curl -v http://localhost/api/v1/books
+
+# Test from your local machine
+curl -v http://your-ec2-ip/api/v1/books
+```
+
+## Maintenance Commands
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Update application on EC2
+git pull origin main
+docker-compose up -d --build
+
+# Monitor containers
+docker stats
+
+# Check container health
+docker ps -a
+```
+=
+
+### 7. Test the Deployment
+
+Visit your EC2 instance’s public IP in a browser:
+
+```
+http://<YOUR_EC2_PUBLIC_IP>/docs
 ```
 
-### 3. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-## Running the Application
-
-### Start the Development Server
-
-```bash
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### API Documentation
-
-Once the server is running, you can access the API documentation at:
-
-- **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+If everything is configured correctly, you should see the FastAPI Swagger documentation.
 
 ## API Endpoints
 
@@ -102,115 +170,6 @@ Once the server is running, you can access the API documentation at:
 | POST   | `/api/v1/books/`         | Add a new book |
 | PUT    | `/api/v1/books/{book_id}` | Update an existing book |
 | DELETE | `/api/v1/books/{book_id}` | Delete a book by ID |
-
-## Deployment Guide (Amazon EC2 with Nginx)
-
-### 1. Set Up an Amazon EC2 Instance
-
-- Launch an **Amazon Linux 2023** EC2 instance
-- Configure Security Group to allow HTTP (80), HTTPS (443), and custom API port (8000)
-- Connect to your instance via SSH:
-
-```bash
-ssh -i ~/.pem ec2-user@<YOUR_EC2_PUBLIC_IP>
-```
-
-### 2. Install Required Packages
-
-```bash
-sudo dnf install -y python3 python3-pip nginx git
-```
-
-### 3. Clone the Repository and Set Up the Virtual Environment
-
-```bash
-git clone https://github.com/CynthiaWahome/fastapi-book-project.git
-cd fastapi-book-project
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 4. Configure FastAPI as a Systemd Service
-
-Create a service file:
-
-```bash
-sudo nano /etc/systemd/system/fastapi.service
-```
-
-Add the following content:
-
-```
-[Unit]
-Description=FastAPI Application
-After=network.target
-
-[Service]
-User=ec2-user
-Group=ec2-user
-WorkingDirectory=/home/ec2-user/fastapi-book-project
-ExecStart=/home/ec2-user/fastapi-book-project/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Save and close the file.
-
-### 5. Start and Enable the FastAPI Service
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl start fastapi.service
-sudo systemctl enable fastapi.service
-```
-
-Verify the service is running:
-```bash
-sudo systemctl status fastapi.service
-```
-
-### 6. Configure Nginx as a Reverse Proxy
-
-Create a new Nginx configuration file:
-
-```bash
-sudo nano /etc/nginx/conf.d/fastapi.conf
-```
-
-Add the following content:
-
-```
-server {
-    listen 80;
-    server_name <YOUR_EC2_PUBLIC_IP>;
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-Save and close the file, then restart Nginx:
-
-```bash
-sudo systemctl restart nginx
-sudo systemctl enable nginx
-```
-
-### 7. Test the Deployment
-
-Visit your EC2 instance’s public IP in a browser:
-
-```
-http://<YOUR_EC2_PUBLIC_IP>/docs
-```
-
-If everything is configured correctly, you should see the FastAPI Swagger documentation.
 
 ## Running Tests
 
